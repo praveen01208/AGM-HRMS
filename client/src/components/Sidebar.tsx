@@ -29,30 +29,28 @@ interface SidebarProps {
 
 const navItemsByRole: Record<string, NavItem[]> = {
   staff: [
-    { label: 'Dashboard',    icon: LayoutDashboard, path: '/staff' },
-    { label: 'Apply Leave',  icon: CalendarPlus,    path: '/staff/apply' },
-    { label: 'Leave Status', icon: ClipboardList,   path: '/staff/status' },
-    { label: 'Adjustments',  icon: RefreshCcw,      path: '/staff/adjustments' },
-    { label: 'History',      icon: History,         path: '/staff/history' },
+    { label: 'Dashboard',    icon: LayoutDashboard, path: '/staff/dashboard' },
+    { label: 'Apply Leave',  icon: CalendarPlus,    path: '/staff/leave/apply' },
+    { label: 'Leave Status', icon: ClipboardList,   path: '/staff/leave/status' },
+    { label: 'History',      icon: History,         path: '/staff/leave/history' },
+    { label: 'Adjustments',  icon: RefreshCcw,      path: '/staff/adjustment/respond' },
     { label: 'Profile',      icon: UserCircle,      path: '/staff/profile' },
   ],
   hod: [
-    { label: 'Dashboard',    icon: LayoutDashboard, path: '/hod' },
-    { label: 'Approvals',    icon: ClipboardList,   path: '/hod/approvals' },
-    { label: 'Staff List',   icon: UserCircle,      path: '/hod/staff' },
-    { label: 'Adjustments',  icon: RefreshCcw,      path: '/hod/adjustments' },
-    { label: 'History',      icon: History,         path: '/hod/history' },
+    { label: 'Dashboard',    icon: LayoutDashboard, path: '/hod/dashboard' },
+    { label: 'Approvals',    icon: ClipboardList,   path: '/hod/leaves' },
+    { label: 'Profile',      icon: UserCircle,      path: '/hod/profile' },
   ],
   principal: [
-    { label: 'Dashboard',    icon: LayoutDashboard, path: '/principal' },
-    { label: 'Approvals',    icon: ClipboardList,   path: '/principal/approvals' },
+    { label: 'Dashboard',    icon: LayoutDashboard, path: '/principal/dashboard' },
+    { label: 'Approvals',    icon: ClipboardList,   path: '/principal/leaves' },
     { label: 'Reports',      icon: History,         path: '/principal/reports' },
     { label: 'Profile',      icon: UserCircle,      path: '/principal/profile' },
   ],
   admin: [
-    { label: 'Dashboard',    icon: LayoutDashboard, path: '/admin' },
+    { label: 'Dashboard',    icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Staff Mgmt',   icon: UserCircle,      path: '/admin/staff' },
-    { label: 'Leave Config', icon: CalendarPlus,    path: '/admin/config' },
+    { label: 'Calendar',     icon: CalendarPlus,    path: '/admin/calendar' },
     { label: 'Reports',      icon: History,         path: '/admin/reports' },
   ],
 };
