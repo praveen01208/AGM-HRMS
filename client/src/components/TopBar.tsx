@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Menu, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { Bell, Menu, ChevronDown, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Notification {
