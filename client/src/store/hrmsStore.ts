@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 
 export type LeaveStatus = 'pending_adjustment' | 'pending_hod' | 'pending_principal' | 'approved' | 'rejected';
 export type LeaveType = 'casual' | 'sick' | 'academic' | 'duty';
@@ -76,154 +77,365 @@ interface HrmsState {
   staff: StaffMember[];
   holidays: Holiday[];
   notifications: Notification[];
+  loading: boolean;
+
+  fetchInitialData: () => Promise<void>;
 
   // Leave actions
-  applyLeave: (leave: Omit<Leave, 'id' | 'appliedAt'>) => number;
-  updateLeaveStatus: (id: number, status: LeaveStatus, remarks?: string, by?: 'hod' | 'principal') => void;
+  applyLeave: (leave: Omit<Leave, 'id' | 'appliedAt'>) => Promise<number>;
+  updateLeaveStatus: (id: number, status: LeaveStatus, remarks?: string, by?: 'hod' | 'principal') => Promise<void>;
 
   // Adjustment actions
-  addAdjustment: (adj: Omit<Adjustment, 'id'>) => void;
-  respondAdjustment: (id: number, status: AdjustmentStatus) => void;
+  addAdjustment: (adj: Omit<Adjustment, 'id'>) => Promise<void>;
+  respondAdjustment: (id: number, status: AdjustmentStatus) => Promise<void>;
 
   // Staff actions
-  addStaff: (s: Omit<StaffMember, 'id'>) => void;
-  editStaff: (id: number, updates: Partial<StaffMember>) => void;
-  deleteStaff: (id: number) => void;
-  resetPassword: (id: number) => void;
+  addStaff: (s: Omit<StaffMember, 'id'>) => Promise<void>;
+  editStaff: (id: number, updates: Partial<StaffMember>) => Promise<void>;
+  deleteStaff: (id: number) => Promise<void>;
+  resetPassword: (id: number) => Promise<void>;
 
   // Holiday actions
-  addHoliday: (h: Omit<Holiday, 'id'>) => void;
-  deleteHoliday: (id: number) => void;
+  addHoliday: (h: Omit<Holiday, 'id'>) => Promise<void>;
+  deleteHoliday: (id: number) => Promise<void>;
 
   // Notification actions
-  markRead: (id: number) => void;
-  markAllRead: (userId: number) => void;
-  addNotification: (n: Omit<Notification, 'id' | 'createdAt'>) => void;
+  markRead: (id: number) => Promise<void>;
+  markAllRead: (userId: number) => Promise<void>;
+  addNotification: (n: Omit<Notification, 'id' | 'createdAt'>) => Promise<void>;
 }
 
-// ─── Mock Seed Data ────────────────────────────────────────────────────────────
+// ─── Helpers to map snake_case to camelCase ────────────────────────────────────
+const mapStaff = (row: any): StaffMember => ({
+  id: row.id,
+  name: row.name,
+  employeeId: row.employee_id,
+  email: row.email,
+  role: row.role,
+  department: row.department || '',
+  departmentId: row.department_id || 0,
+  designation: row.designation,
+  phone: row.phone || '',
+  joinDate: row.join_date,
+  casualBalance: row.casual_balance,
+  sickBalance: row.sick_balance,
+  academicBalance: row.academic_balance,
+  dutyBalance: row.duty_balance,
+});
 
-const seedLeaves: Leave[] = [
-  { id: 1,  userId: 5, userName: 'John Doe',     department: 'CSE',  departmentId: 1, leaveType: 'casual',   fromDate: '2025-06-10', toDate: '2025-06-12', days: 3, reason: 'Family function',        status: 'approved',           hodRemarks: 'Approved',       principalRemarks: 'Approved', appliedAt: '2025-06-05', hasAdjustment: true },
-  { id: 2,  userId: 5, userName: 'John Doe',     department: 'CSE',  departmentId: 1, leaveType: 'sick',     fromDate: '2025-07-05', toDate: '2025-07-07', days: 3, reason: 'Fever and rest',          status: 'pending_hod',                                                                         appliedAt: '2025-07-01', hasAdjustment: true },
-  { id: 3,  userId: 6, userName: 'Priya Sharma', department: 'CSE',  departmentId: 1, leaveType: 'academic', fromDate: '2025-06-20', toDate: '2025-06-21', days: 2, reason: 'Conference attendance',   status: 'pending_principal',  hodRemarks: 'Recommended',                                    appliedAt: '2025-06-15', hasAdjustment: false },
-  { id: 4,  userId: 7, userName: 'Ravi Kumar',   department: 'ECE',  departmentId: 2, leaveType: 'casual',   fromDate: '2025-06-18', toDate: '2025-06-19', days: 2, reason: 'Personal work',           status: 'pending_hod',                                                                         appliedAt: '2025-06-12', hasAdjustment: true },
-  { id: 5,  userId: 8, userName: 'Arun Menon',   department: 'CSE',  departmentId: 1, leaveType: 'duty',     fromDate: '2025-05-22', toDate: '2025-05-22', days: 1, reason: 'External exam duty',      status: 'rejected',           hodRemarks: 'Not sanctioned', principalRemarks: 'Rejected', appliedAt: '2025-05-18', hasAdjustment: false },
-  { id: 6,  userId: 9, userName: 'Sunita Nair',  department: 'MECH', departmentId: 3, leaveType: 'sick',     fromDate: '2025-07-10', toDate: '2025-07-12', days: 3, reason: 'Medical procedure',       status: 'pending_principal',  hodRemarks: 'Approved',                                       appliedAt: '2025-07-08', hasAdjustment: false },
-];
+const mapLeave = (row: any): Leave => ({
+  id: row.id,
+  userId: row.user_id,
+  userName: row.user_name || '',
+  department: row.department || '',
+  departmentId: row.department_id || 0,
+  leaveType: row.leave_type as LeaveType,
+  fromDate: row.from_date,
+  toDate: row.to_date,
+  days: row.days,
+  reason: row.reason,
+  status: row.status as LeaveStatus,
+  hodRemarks: row.hod_remarks || undefined,
+  principalRemarks: row.principal_remarks || undefined,
+  appliedAt: row.applied_at,
+  hasAdjustment: row.has_adjustment,
+});
 
-const seedAdjustments: Adjustment[] = [
-  { id: 1, leaveId: 1, requesterId: 5, requesterName: 'John Doe',  adjusterId: 6, adjusterName: 'Priya Sharma', period: '3rd Period', subject: 'Data Structures', date: '2025-06-10', status: 'accepted', respondedAt: '2025-06-06' },
-  { id: 2, leaveId: 2, requesterId: 5, requesterName: 'John Doe',  adjusterId: 8, adjusterName: 'Arun Menon',   period: '2nd Period', subject: 'Algorithms',       date: '2025-07-05', status: 'pending' },
-  { id: 3, leaveId: 4, requesterId: 7, requesterName: 'Ravi Kumar', adjusterId: 9, adjusterName: 'Sunita Nair', period: '1st Period', subject: 'Networks',         date: '2025-06-18', status: 'accepted', respondedAt: '2025-06-13' },
-];
+const mapAdjustment = (row: any): Adjustment => ({
+  id: row.id,
+  leaveId: row.leave_id,
+  requesterId: row.requester_id,
+  requesterName: row.requester_name || '',
+  adjusterId: row.adjuster_id,
+  adjusterName: row.adjuster_name || '',
+  period: row.period,
+  subject: row.subject,
+  date: row.date,
+  status: row.status as AdjustmentStatus,
+  respondedAt: row.responded_at || undefined,
+});
 
-const seedStaff: StaffMember[] = [
-  { id: 5,  name: 'John Doe',       employeeId: 'AGM-CSE-001',  email: 'john@agmcet.ac.in',    role: 'staff', department: 'CSE',  departmentId: 1, designation: 'Assistant Professor', phone: '9876543210', joinDate: '2020-06-01', casualBalance: 12, sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 6,  name: 'Priya Sharma',   employeeId: 'AGM-CSE-002',  email: 'priya@agmcet.ac.in',   role: 'staff', department: 'CSE',  departmentId: 1, designation: 'Assistant Professor', phone: '9876543211', joinDate: '2019-07-01', casualBalance: 15, sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 7,  name: 'Ravi Kumar',     employeeId: 'AGM-ECE-001',  email: 'ravi@agmcet.ac.in',    role: 'staff', department: 'ECE',  departmentId: 2, designation: 'Associate Professor', phone: '9876543212', joinDate: '2018-06-01', casualBalance: 8,  sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 8,  name: 'Arun Menon',     employeeId: 'AGM-CSE-003',  email: 'arun@agmcet.ac.in',    role: 'staff', department: 'CSE',  departmentId: 1, designation: 'Assistant Professor', phone: '9876543213', joinDate: '2021-01-01', casualBalance: 6,  sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 9,  name: 'Sunita Nair',    employeeId: 'AGM-MECH-001', email: 'sunita@agmcet.ac.in',  role: 'staff', department: 'MECH', departmentId: 3, designation: 'Assistant Professor', phone: '9876543214', joinDate: '2022-08-01', casualBalance: 14, sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 3,  name: 'Dr. Meera Rajan',employeeId: 'AGM-HOD-01',   email: 'hod.cse@agmcet.ac.in', role: 'hod',   department: 'CSE',  departmentId: 1, designation: 'HOD - CSE',          phone: '9876543215', joinDate: '2015-06-01', casualBalance: 15, sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-  { id: 4,  name: 'Dr. Rajesh Kumar',employeeId: 'AGM-HOD-02',  email: 'hod.ece@agmcet.ac.in', role: 'hod',   department: 'ECE',  departmentId: 2, designation: 'HOD - ECE',          phone: '9876543216', joinDate: '2016-01-01', casualBalance: 15, sickBalance: 10, academicBalance: 5, dutyBalance: 3 },
-];
+const mapHoliday = (row: any): Holiday => ({
+  id: row.id,
+  date: row.date,
+  description: row.description,
+  type: row.type as Holiday['type'],
+});
 
-const seedHolidays: Holiday[] = [
-  { id: 1, date: '2025-01-26', description: 'Republic Day',    type: 'holiday' },
-  { id: 2, date: '2025-04-14', description: 'Tamil New Year',  type: 'holiday' },
-  { id: 3, date: '2025-06-01', description: 'Term I Begins',   type: 'term_start' },
-  { id: 4, date: '2025-10-31', description: 'Term I Ends',     type: 'term_end' },
-  { id: 5, date: '2025-08-15', description: 'Independence Day',type: 'holiday' },
-  { id: 6, date: '2025-10-02', description: "Gandhi Jayanti",  type: 'holiday' },
-];
-
-const seedNotifications: Notification[] = [
-  { id: 1, userId: 3, message: 'John Doe applied for Sick Leave',    sub: 'Jul 5–7 · 3 days',            isRead: false, type: 'pending',   createdAt: '2025-07-01T09:00:00Z' },
-  { id: 2, userId: 3, message: 'Ravi Kumar applied for Casual Leave',sub: 'Jun 18–19 · 2 days',           isRead: false, type: 'pending',   createdAt: '2025-06-12T10:00:00Z' },
-  { id: 3, userId: 5, message: 'Your leave was approved',             sub: 'Medical Leave Jun 10–12',      isRead: true,  type: 'approved',  createdAt: '2025-06-08T14:00:00Z' },
-  { id: 4, userId: 2, message: 'Priya Sharma leave forwarded by HOD',sub: 'Academic Leave Jun 20–21',      isRead: false, type: 'forwarded', createdAt: '2025-06-17T11:00:00Z' },
-  { id: 5, userId: 2, message: 'Sunita Nair leave forwarded by HOD', sub: 'Sick Leave Jul 10–12',          isRead: false, type: 'forwarded', createdAt: '2025-07-09T08:00:00Z' },
-  { id: 6, userId: 5, message: 'Adjustment request sent to Arun Menon',sub: 'Algorithms · 2nd Period',    isRead: false, type: 'pending',   createdAt: '2025-07-01T09:05:00Z' },
-  { id: 7, userId: 8, message: 'John Doe requests class adjustment', sub: 'Algorithms · Jul 5 · 2nd Pd',  isRead: false, type: 'pending',   createdAt: '2025-07-01T09:05:00Z' },
-];
-
-let nextId = { leave: 10, adj: 10, staff: 20, holiday: 10, notif: 10 };
+const mapNotification = (row: any): Notification => ({
+  id: row.id,
+  userId: row.user_id,
+  message: row.message,
+  sub: row.sub || '',
+  isRead: row.is_read,
+  type: row.type as Notification['type'],
+  createdAt: row.created_at,
+});
 
 export const useHrmsStore = create<HrmsState>((set, get) => ({
-  leaves: seedLeaves,
-  adjustments: seedAdjustments,
-  staff: seedStaff,
-  holidays: seedHolidays,
-  notifications: seedNotifications,
+  leaves: [],
+  adjustments: [],
+  staff: [],
+  holidays: [],
+  notifications: [],
+  loading: false,
 
-  applyLeave: (leave) => {
-    const id = nextId.leave++;
-    set(s => ({ leaves: [{ ...leave, id, appliedAt: new Date().toISOString() }, ...s.leaves] }));
-    return id;
-  },
+  fetchInitialData: async () => {
+    set({ loading: true });
+    try {
+      const [
+        { data: sData },
+        { data: lData },
+        { data: aData },
+        { data: hData },
+        { data: nData }
+      ] = await Promise.all([
+        supabase.from('staff').select('*').order('name'),
+        supabase.from('leaves').select('*').order('applied_at', { ascending: false }),
+        supabase.from('adjustments').select('*').order('date', { ascending: false }),
+        supabase.from('holidays').select('*').order('date'),
+        supabase.from('notifications').select('*').order('created_at', { ascending: false })
+      ]);
 
-  updateLeaveStatus: (id, status, remarks, by) => {
-    set(s => ({
-      leaves: s.leaves.map(l => l.id === id ? {
-        ...l,
-        status,
-        ...(by === 'hod' ? { hodRemarks: remarks } : {}),
-        ...(by === 'principal' ? { principalRemarks: remarks } : {}),
-      } : l)
-    }));
-  },
-
-  addAdjustment: (adj) => {
-    const id = nextId.adj++;
-    set(s => ({ adjustments: [{ ...adj, id }, ...s.adjustments] }));
-  },
-
-  respondAdjustment: (id, status) => {
-    set(s => ({
-      adjustments: s.adjustments.map(a => a.id === id
-        ? { ...a, status, respondedAt: new Date().toISOString() } : a)
-    }));
-    // If accepted, move leave to pending_hod
-    const adj = get().adjustments.find(a => a.id === id);
-    if (adj && status === 'accepted') {
-      get().updateLeaveStatus(adj.leaveId, 'pending_hod');
+      set({
+        staff: (sData || []).map(mapStaff),
+        leaves: (lData || []).map(mapLeave),
+        adjustments: (aData || []).map(mapAdjustment),
+        holidays: (hData || []).map(mapHoliday),
+        notifications: (nData || []).map(mapNotification),
+      });
+    } catch (err) {
+      console.error('Error fetching initial HRMS data:', err);
+    } finally {
+      set({ loading: false });
     }
   },
 
-  addStaff: (s) => {
-    const id = nextId.staff++;
-    set(state => ({ staff: [{ ...s, id }, ...state.staff] }));
+  applyLeave: async (leave) => {
+    const { data, error } = await supabase
+      .from('leaves')
+      .insert([{
+        user_id: leave.userId,
+        user_name: leave.userName,
+        department: leave.department,
+        department_id: leave.departmentId,
+        leave_type: leave.leaveType,
+        from_date: leave.fromDate,
+        to_date: leave.toDate,
+        days: leave.days,
+        reason: leave.reason,
+        status: leave.status,
+        has_adjustment: leave.hasAdjustment
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    const newLeave = mapLeave(data);
+    set(s => ({ leaves: [newLeave, ...s.leaves] }));
+    return newLeave.id;
   },
 
-  editStaff: (id, updates) => {
-    set(s => ({ staff: s.staff.map(m => m.id === id ? { ...m, ...updates } : m) }));
+  updateLeaveStatus: async (id, status, remarks, by) => {
+    const updates: any = { status };
+    if (by === 'hod') updates.hod_remarks = remarks;
+    if (by === 'principal') updates.principal_remarks = remarks;
+
+    const { data, error } = await supabase
+      .from('leaves')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    set(s => ({
+      leaves: s.leaves.map(l => l.id === id ? mapLeave(data) : l)
+    }));
   },
 
-  deleteStaff: (id) => {
+  addAdjustment: async (adj) => {
+    const { data, error } = await supabase
+      .from('adjustments')
+      .insert([{
+        leave_id: adj.leaveId,
+        requester_id: adj.requesterId,
+        requester_name: adj.requesterName,
+        adjuster_id: adj.adjusterId,
+        adjuster_name: adj.adjusterName,
+        period: adj.period,
+        subject: adj.subject,
+        date: adj.date,
+        status: adj.status
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(s => ({ adjustments: [mapAdjustment(data), ...s.adjustments] }));
+  },
+
+  respondAdjustment: async (id, status) => {
+    const { data, error } = await supabase
+      .from('adjustments')
+      .update({
+        status,
+        responded_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    set(s => ({
+      adjustments: s.adjustments.map(a => a.id === id ? mapAdjustment(data) : a)
+    }));
+
+    // If accepted, move leave to pending_hod
+    if (status === 'accepted') {
+      const adj = get().adjustments.find(a => a.id === id);
+      if (adj) {
+        await get().updateLeaveStatus(adj.leaveId, 'pending_hod');
+      }
+    }
+  },
+
+  addStaff: async (s) => {
+    const { data, error } = await supabase
+      .from('staff')
+      .insert([{
+        name: s.name,
+        employee_id: s.employeeId,
+        email: s.email,
+        role: s.role,
+        department: s.department,
+        department_id: s.departmentId,
+        designation: s.designation,
+        phone: s.phone,
+        join_date: s.joinDate,
+        casual_balance: s.casualBalance,
+        sick_balance: s.sickBalance,
+        academic_balance: s.academicBalance,
+        duty_balance: s.dutyBalance
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(state => ({ staff: [mapStaff(data), ...state.staff] }));
+  },
+
+  editStaff: async (id, updates) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.employeeId !== undefined) dbUpdates.employee_id = updates.employeeId;
+    if (updates.email !== undefined) dbUpdates.email = updates.email;
+    if (updates.role !== undefined) dbUpdates.role = updates.role;
+    if (updates.department !== undefined) dbUpdates.department = updates.department;
+    if (updates.departmentId !== undefined) dbUpdates.department_id = updates.departmentId;
+    if (updates.designation !== undefined) dbUpdates.designation = updates.designation;
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.joinDate !== undefined) dbUpdates.join_date = updates.joinDate;
+    if (updates.casualBalance !== undefined) dbUpdates.casual_balance = updates.casualBalance;
+    if (updates.sickBalance !== undefined) dbUpdates.sick_balance = updates.sickBalance;
+    if (updates.academicBalance !== undefined) dbUpdates.academic_balance = updates.academicBalance;
+    if (updates.dutyBalance !== undefined) dbUpdates.duty_balance = updates.dutyBalance;
+
+    const { data, error } = await supabase
+      .from('staff')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(s => ({ staff: s.staff.map(m => m.id === id ? mapStaff(data) : m) }));
+  },
+
+  deleteStaff: async (id) => {
+    const { error } = await supabase
+      .from('staff')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
     set(s => ({ staff: s.staff.filter(m => m.id !== id) }));
   },
 
-  resetPassword: (_id) => { /* In real system: call API */ },
+  resetPassword: async (id) => {
+    const member = get().staff.find(m => m.id === id);
+    if (!member) return;
+    const { error } = await supabase
+      .from('staff')
+      .update({ password: member.employeeId })
+      .eq('id', id);
 
-  addHoliday: (h) => {
-    const id = nextId.holiday++;
-    set(s => ({ holidays: [...s.holidays, { ...h, id }].sort((a, b) => a.date.localeCompare(b.date)) }));
+    if (error) throw error;
   },
 
-  deleteHoliday: (id) => {
+  addHoliday: async (h) => {
+    const { data, error } = await supabase
+      .from('holidays')
+      .insert([{
+        date: h.date,
+        description: h.description,
+        type: h.type
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(s => ({ holidays: [...s.holidays, mapHoliday(data)].sort((a, b) => a.date.localeCompare(b.date)) }));
+  },
+
+  deleteHoliday: async (id) => {
+    const { error } = await supabase
+      .from('holidays')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
     set(s => ({ holidays: s.holidays.filter(h => h.id !== id) }));
   },
 
-  markRead: (id) => {
-    set(s => ({ notifications: s.notifications.map(n => n.id === id ? { ...n, isRead: true } : n) }));
+  markRead: async (id) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(s => ({ notifications: s.notifications.map(n => n.id === id ? mapNotification(data) : n) }));
   },
 
-  markAllRead: (userId) => {
+  markAllRead: async (userId) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId);
+
+    if (error) throw error;
     set(s => ({ notifications: s.notifications.map(n => n.userId === userId ? { ...n, isRead: true } : n) }));
   },
 
-  addNotification: (n) => {
-    const id = nextId.notif++;
-    set(s => ({ notifications: [{ ...n, id, createdAt: new Date().toISOString() }, ...s.notifications] }));
+  addNotification: async (n) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([{
+        user_id: n.userId,
+        message: n.message,
+        sub: n.sub,
+        is_read: n.isRead,
+        type: n.type
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    set(s => ({ notifications: [mapNotification(data), ...s.notifications] }));
   },
 }));

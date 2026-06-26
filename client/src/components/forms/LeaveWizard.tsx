@@ -6,7 +6,6 @@ import { useAuthStore } from '../../store/authStore';
 import { StepIndicator } from '../StepIndicator';
 import { GlassCard } from '../GlassCard';
 import { daysBetween, todayISO } from '../../utils/dateUtils';
-import { MOCK_USERS_PUBLIC } from '../../store/authStore';
 
 const LEAVE_TYPES: { value: LeaveType; label: string; desc: string }[] = [
   { value: 'casual',   label: 'Casual Leave',   desc: 'Personal / family reasons' },
@@ -20,7 +19,7 @@ const PERIODS = ['1st Period', '2nd Period', '3rd Period', '4th Period', '5th Pe
 export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { applyLeave, addAdjustment, addNotification } = useHrmsStore();
+  const { applyLeave, addAdjustment, addNotification, staff } = useHrmsStore();
 
   const [step, setStep] = useState(0);
 
@@ -42,7 +41,7 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
   const isWorkingDay = days > 0;
 
   // Colleagues in same dept (exclude self)
-  const colleagues = MOCK_USERS_PUBLIC.filter(
+  const colleagues = staff.filter(
     u => u.role === 'staff' && u.departmentId === user?.departmentId && u.id !== user?.id
   );
 
@@ -52,9 +51,9 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
     { label: 'Adjustment',    status: step > 2 ? 'done' : step === 2 ? 'active' : 'inactive' },
   ] as const;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!user) return;
-    const leaveId = applyLeave({
+    const leaveId = await applyLeave({
       userId: user.id,
       userName: user.name,
       department: user.department ?? '',
@@ -69,8 +68,8 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
     });
 
     if (needAdjustment && adjPeer) {
-      const peerUser = MOCK_USERS_PUBLIC.find(u => String(u.id) === adjPeer);
-      addAdjustment({
+      const peerUser = staff.find(u => String(u.id) === adjPeer);
+      await addAdjustment({
         leaveId,
         requesterId: user.id,
         requesterName: user.name,
@@ -81,10 +80,10 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
         date: fromDate,
         status: 'pending',
       });
-      addNotification({ userId: Number(adjPeer), message: `${user.name} requests class adjustment`, sub: `${adjSubject} · ${adjPeriod}`, isRead: false, type: 'pending' });
+      await addNotification({ userId: Number(adjPeer), message: `${user.name} requests class adjustment`, sub: `${adjSubject} · ${adjPeriod}`, isRead: false, type: 'pending' });
     }
 
-    addNotification({ userId: user.id, message: 'Leave application submitted', sub: `${leaveType} · ${fromDate} to ${toDate}`, isRead: false, type: 'pending' });
+    await addNotification({ userId: user.id, message: 'Leave application submitted', sub: `${leaveType} · ${fromDate} to ${toDate}`, isRead: false, type: 'pending' });
     onSuccess ? onSuccess() : navigate('/staff/leave/status');
   };
 

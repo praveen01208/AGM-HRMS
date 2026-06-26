@@ -1,8 +1,11 @@
+import { useEffect } from 'react';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Auth
 import Home from './pages/Home';
+import { useAuthStore } from './store/authStore';
+import { useHrmsStore } from './store/hrmsStore';
 
 // Staff
 import StaffDashboard from './pages/staff/StaffDashboard';
@@ -37,6 +40,14 @@ import {
 } from './pages/admin/AdminPages';
 
 function App() {
+  const initializeAuth = useAuthStore(s => s.initialize);
+  const fetchInitialData = useHrmsStore(s => s.fetchInitialData);
+
+  useEffect(() => {
+    initializeAuth();
+    fetchInitialData();
+  }, [initializeAuth, fetchInitialData]);
+
   return (
     <Router>
       <Routes>
