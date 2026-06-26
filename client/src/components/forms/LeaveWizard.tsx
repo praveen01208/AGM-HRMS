@@ -104,7 +104,7 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
 
           <div className="mb-6">
             <label className="input-label">Leave Type</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {LEAVE_TYPES.map(lt => (
                 <button
                   key={lt.value}
@@ -123,7 +123,7 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="input-label">From Date</label>
               <input type="date" min={todayISO()} value={fromDate} onChange={e => setFromDate(e.target.value)} className="input-field" />
@@ -187,8 +187,8 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button onClick={() => setStep(0)} className="btn-secondary w-auto px-5">
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
+            <button onClick={() => setStep(0)} className="btn-secondary w-full sm:w-auto px-5">
               <ChevronLeft size={16} /> Back
             </button>
             <button className="btn-primary" disabled={!reason.trim()} onClick={() => needAdjustment ? setStep(2) : handleSubmit()}>
@@ -216,7 +216,7 @@ export const LeaveWizard: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
               <label className="input-label">Period *</label>
               <select value={adjPeriod} onChange={e => setAdjPeriod(e.target.value)} className="input-field">

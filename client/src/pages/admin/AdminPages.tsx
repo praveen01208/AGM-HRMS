@@ -221,7 +221,7 @@ export function StaffForm({ mode, staffId }: StaffFormProps) {
         <h2 className="text-[#F5EFE6] font-bold text-xl mb-6">{mode === 'add' ? 'Register New Staff Member' : `Edit: ${existing?.name}`}</h2>
         <GlassCard hover={false} className="p-7">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label className="input-label">Full Name *</label><input required value={form.name} onChange={e=>set('name',e.target.value)} className="input-field" placeholder="Dr. John Doe" /></div>
               <div><label className="input-label">Employee ID *</label><input required value={form.employeeId} onChange={e=>set('employeeId',e.target.value)} className="input-field" placeholder="AGM-CSE-001" /></div>
               <div><label className="input-label">Email *</label><input required type="email" value={form.email} onChange={e=>set('email',e.target.value)} className="input-field" /></div>
@@ -238,13 +238,13 @@ export function StaffForm({ mode, staffId }: StaffFormProps) {
                   {['staff','hod'].map(r => <option key={r} value={r} style={{ background: '#122324' }} className="capitalize">{r.toUpperCase()}</option>)}
                 </select>
               </div>
-              <div className="col-span-2"><label className="input-label">Designation *</label><input required value={form.designation} onChange={e=>set('designation',e.target.value)} className="input-field" placeholder="Assistant Professor" /></div>
+              <div className="md:col-span-2"><label className="input-label">Designation *</label><input required value={form.designation} onChange={e=>set('designation',e.target.value)} className="input-field" placeholder="Assistant Professor" /></div>
               <div><label className="input-label">Join Date</label><input type="date" value={form.joinDate} onChange={e=>set('joinDate',e.target.value)} className="input-field" /></div>
             </div>
 
             <div className="border-t border-[rgba(219,159,117,0.12)] pt-5">
               <h4 className="text-[#F5EFE6] font-semibold text-sm mb-4">Leave Balances</h4>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {(['casualBalance','sickBalance','academicBalance','dutyBalance'] as const).map(k => (
                   <div key={k}>
                     <label className="input-label">{k.replace('Balance','').charAt(0).toUpperCase()+k.replace('Balance','').slice(1)}</label>
