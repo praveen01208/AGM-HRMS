@@ -13,23 +13,36 @@ const roles: { value: RoleKey; label: string; path: string }[] = [
   { value: 'admin',     label: 'Administrator',    path: '/admin' },
 ];
 
+import { useAuthStore } from '../store/authStore';
+
 export default function Home() {
   const navigate = useNavigate();
+  const login = useAuthStore(s => s.login);
   const [role, setRole]           = useState<RoleKey>('staff');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword]   = useState('');
   const [showPw, setShowPw]       = useState(false);
   const [loading, setLoading]     = useState(false);
+  const [errorMsg, setErrorMsg]   = useState('');
 
   const selectedRole = roles.find(r => r.value === role)!;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate async auth check — replace with real API call
+    setErrorMsg('');
+    
+    // Simulate async auth check
     await new Promise(res => setTimeout(res, 800));
+    
+    const result = login(employeeId, password, role);
     setLoading(false);
-    navigate(selectedRole.path);
+    
+    if (result.success) {
+      navigate(selectedRole.path);
+    } else {
+      setErrorMsg(result.error || 'Login failed');
+    }
   };
 
   return (
@@ -147,6 +160,10 @@ export default function Home() {
                 Forgot Password?
               </button>
             </div>
+
+            {errorMsg && (
+              <p className="text-[#E05C5C] text-sm font-medium">{errorMsg}</p>
+            )}
 
             {/* Submit */}
             <button
