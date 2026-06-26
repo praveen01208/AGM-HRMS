@@ -6,8 +6,7 @@ import { DataTable } from '../../components/ui/DataTable';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Modal } from '../../components/ui/Modal';
 import { useRequireAuth } from '../../hooks/useAuth';
-import { useHrmsStore, StaffMember, Leave, Holiday } from '../../store/hrmsStore';
-import { useAuthStore } from '../../store/authStore';
+import { useHrmsStore, type StaffMember, type Leave, type Holiday } from '../../store/hrmsStore';
 import { formatDate } from '../../utils/dateUtils';
 import { Users, FileText, CheckCircle2, AlertCircle, Plus, Trash2, Edit3, RotateCcw, Calendar } from 'lucide-react';
 

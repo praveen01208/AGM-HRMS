@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { GlassCard } from '../../components/GlassCard';
 import { useRequireAuth } from '../../hooks/useAuth';
-import { useAuthStore } from '../../store/authStore';
+// Removed unused store import
 import { Eye, EyeOff, User, Mail, Phone, Building2, Calendar } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 import { useHrmsStore } from '../../store/hrmsStore';
 
 export default function StaffProfile() {
   const { user } = useRequireAuth('staff');
-  const { logout } = useAuthStore();
   const { staff } = useHrmsStore();
   const [showPw, setShowPw] = useState(false);
   const [pw, setPw] = useState({ current: '', newPw: '', confirm: '' });

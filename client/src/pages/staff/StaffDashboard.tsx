@@ -10,7 +10,7 @@ import { formatDate } from '../../utils/dateUtils';
 export default function StaffDashboard() {
   const { user } = useRequireAuth('staff');
   const navigate = useNavigate();
-  const { leaves, adjustments, notifications } = useHrmsStore();
+  const { leaves, adjustments } = useHrmsStore();
 
   if (!user) return null;
 
@@ -18,13 +18,13 @@ export default function StaffDashboard() {
   const myPending = myLeaves.filter(l => l.status === 'pending_hod' || l.status === 'pending_principal' || l.status === 'pending_adjustment');
   const myApproved = myLeaves.filter(l => l.status === 'approved');
   const incomingAdj = adjustments.filter(a => a.adjusterId === user.id && a.status === 'pending');
-  const myNotifications = notifications.filter(n => n.userId === user.id && !n.isRead);
+
 
   // Leave balances from store staff record
   const leaveBalance = 12; // from seedStaff for John Doe
 
   return (
-    <DashboardLayout role="staff" user={{ name: user.name, role: user.designation ?? 'Staff', dept: user.department }}>
+    <DashboardLayout role="staff" user={{ name: user.name, role: user.designation ?? 'Staff', dept: user.department }} title="Staff Dashboard">
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5 mb-8">
         {[

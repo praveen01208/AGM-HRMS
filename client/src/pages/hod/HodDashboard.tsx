@@ -4,7 +4,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DataTable } from '../../components/ui/DataTable';
 import { useRequireAuth } from '../../hooks/useAuth';
-import { useHrmsStore, Leave } from '../../store/hrmsStore';
+import { useHrmsStore, type Leave } from '../../store/hrmsStore';
 import { formatDate } from '../../utils/dateUtils';
 import { AlertCircle, CheckCircle2, Users, Calendar } from 'lucide-react';
 
@@ -59,7 +59,7 @@ export default function HodDashboard() {
             { key: 'fromDate',  header: 'From',      render: r => formatDate(r.fromDate) },
             { key: 'toDate',    header: 'To',        render: r => formatDate(r.toDate) },
             { key: 'days',      header: 'Days',      render: r => `${r.days}d` },
-            { key: 'status',    header: 'Status',    render: r => <StatusBadge status="pending" /> },
+            { key: 'status',    header: 'Status',    render: () => <StatusBadge status="pending" /> },
           ]}
           emptyMessage="No pending approvals."
           onRowClick={r => navigate(`/hod/leaves/${r.id}`)}

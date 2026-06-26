@@ -6,7 +6,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { DataTable } from '../../components/ui/DataTable';
 import { Modal } from '../../components/ui/Modal';
 import { useRequireAuth } from '../../hooks/useAuth';
-import { useHrmsStore, Leave } from '../../store/hrmsStore';
+import { useHrmsStore, type Leave } from '../../store/hrmsStore';
 import { formatDate } from '../../utils/dateUtils';
 import { AlertCircle, CheckCircle2, Users, TrendingUp } from 'lucide-react';
 
@@ -69,7 +69,6 @@ export default function PrincipalDashboard() {
 
 export function PrincipalLeaveList() {
   const { user } = useRequireAuth('principal');
-  const navigate = useNavigate();
   const { leaves, updateLeaveStatus, addNotification } = useHrmsStore();
   const [modal, setModal] = useState<{ open: boolean; leaveId: number; action: 'approve' | 'reject'; remarks: string } | null>(null);
   const [filter, setFilter] = useState<'pending_principal' | 'approved' | 'rejected' | 'all'>('pending_principal');

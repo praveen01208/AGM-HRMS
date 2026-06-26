@@ -4,7 +4,7 @@ import { DashboardLayout } from '../../components/DashboardLayout';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DataTable } from '../../components/ui/DataTable';
 import { useRequireAuth } from '../../hooks/useAuth';
-import { useHrmsStore, Leave } from '../../store/hrmsStore';
+import { useHrmsStore, type Leave } from '../../store/hrmsStore';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function HodLeaveList() {

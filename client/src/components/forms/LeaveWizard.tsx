@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, ChevronLeft, Calendar, FileText, Users } from 'lucide-react';
-import { useHrmsStore, LeaveType } from '../../store/hrmsStore';
+import { useHrmsStore, type LeaveType } from '../../store/hrmsStore';
 import { useAuthStore } from '../../store/authStore';
 import { StepIndicator } from '../StepIndicator';
 import { GlassCard } from '../GlassCard';

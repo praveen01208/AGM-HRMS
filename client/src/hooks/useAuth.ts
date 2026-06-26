@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, UserRole } from '../store/authStore';
+import { useAuthStore, type UserRole } from '../store/authStore';
 
 /**
  * Redirects to login if not authenticated.
