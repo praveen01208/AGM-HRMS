@@ -1,0 +1,14 @@
+/* Reset and clear any leftover default styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Smooth page transitions */
+#root {
+  isolation: isolate;
+}
